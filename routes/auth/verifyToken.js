@@ -92,6 +92,25 @@ export default async function verifyToken(req, res) {
             }
             return res.status(403).json(response);
         });
+    } else if (auth.method === 'commentShort') {
+        queue.add(queue.TYPES.CommentVerification).then(async (data) => {
+            for (let comment of data) {
+                if ((comment.content == auth.publicCode) && (comment.author.username == auth.username)) {
+                    response = {
+                        valid: true,
+                        username: comment.author.username,
+                        redirect: auth.redirectLocation,
+                    };
+                    if (Boolean(req.query.oneClickSignIn) === true) {
+                        let oneClickSignIn = await getOneClickSignInTokenAndAddAccount(req.headers?.authorization, response.username, redirect);
+                        response['oneClickSignInToken'] = oneClickSignIn.token;
+                        response['instantPrivateCode'] = oneClickSignIn.instantPrivateCode;
+                    }
+                    return res.status(200).json(response);
+                }
+            }
+            return res.status(403).json(response);
+        });
     } else {
         res.status(500).json({ error: 'Got invalid auth method from database' });
     }
